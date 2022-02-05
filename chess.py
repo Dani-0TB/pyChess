@@ -1,28 +1,7 @@
-from turtle import back
 import pygame, os
 from sys import exit
-
-class Board(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
-
-        board_image = pygame.image.load(os.path.join('Assets/Chess_Board.png')).convert()
-        self.image = pygame.transform.rotozoom(board_image, 0,0.7)
-        self.rect = self.image.get_rect(center = (640,360))
-
-    def update_board(self):
-        pass
-
-class Piece(pygame.sprite.Sprite):
-    def __init__(self, type, color, square):
-        super().__init__()
-        self.type = type
-        self.color = color
-        self.square = square # Create a variable with a tuple of x and y coordinates
-        # Load image
-        
-        self.image = pygame.image.load(os.path.join(f'Assets/Pieces/{self.type}.png')).convert_alpha()
-        self.rect = self.image.get_rect(center = self.square)
+from Board import *
+from Piece import *
 
 
 def main():
@@ -43,8 +22,6 @@ def main():
     SCREEN = pygame.display.set_mode(display_size)
     pygame.display.set_caption('Welcome to pyChess!')
 
-    color = (84, 132, 156)
-    
     clock = pygame.time.Clock()
     FPS = 60
 
@@ -56,41 +33,68 @@ def main():
     board.add(Board())
 
     pieces = pygame.sprite.Group()
+
+    move_sound = pygame.mixer.Sound(os.path.join('Assets/Sound/move.wav'))
+    capture_sound = pygame.mixer.Sound(os.path.join('Assets/Sound/capture.wav'))
     # White Pawns
 
     init_pieces(pieces, squares)
+    pieces_on_board = []
 
     game_on = True
     
     #Main game loop.
     while game_on:
+        pieces_on_board = []
+        for piece in pieces:
+            if not piece.picked_up:
+                pieces_on_board.append(piece)
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
-        
+            # Pice Movement logic
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                for piece in pieces:
+                    if piece.rect.collidepoint(pygame.mouse.get_pos()): piece.picked_up = True
+            if event.type == pygame.MOUSEBUTTONUP:
+                for piece in pieces:
+                    # Simple Capture Mechanic.
+                    if piece.picked_up:
+                        for piece_2 in pieces_on_board:
+                            if piece.rect.collidepoint(piece_2.rect.center): piece_2.remove()
+
+                    if piece.rect.collidepoint(pygame.mouse.get_pos()) and piece.picked_up: piece.picked_up = False
+                             
+            # Reset Game
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r: init_pieces(pieces, squares)
+        piece_list = []
+        for piece in pieces:
+            piece_list.append(piece)
+            
         SCREEN.blit(background_surf,background_rect)
         board.update(SCREEN)
         
         board.draw(SCREEN)
-
+        pieces.update()
         pieces.draw(SCREEN)
-
         pygame.display.update()
         clock.tick(FPS)
 
 def init_pieces(pieces, squares):
+    pieces.empty()
     for piece in range(1,9):
         pieces.add(Piece('white_pawn', 'white', (squares[f'B{piece}'])))
 
     white_pieces = [
     'white_rook', 'white_knight','white_bishop',
-    'white_king', 'white_queen', 
+    'white_queen', 'white_king',
     'white_bishop','white_knight','white_rook',]
     piece_index = 0
     for piece in white_pieces:
         piece_index += 1
-        print(piece)
         pieces.add(Piece(piece, 'white', (squares[f'A{piece_index}'])))
 
 
@@ -99,12 +103,11 @@ def init_pieces(pieces, squares):
     
     black_pieces = [
     'black_rook', 'black_knight','black_bishop',
-    'black_king', 'black_queen', 
+    'black_queen', 'black_king',
     'black_bishop','black_knight','black_rook']
     piece_index = 0
     for piece in black_pieces:
         piece_index += 1
-        print(piece)
         pieces.add(Piece(piece, 'black', (squares[f'H{piece_index}'])))
     
 
